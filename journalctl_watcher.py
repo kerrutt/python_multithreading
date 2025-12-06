@@ -6,7 +6,7 @@ import queue
 import re
 
 last_activity_timestamp = time.time()
-timeout_seconds = 10
+timeout_seconds = 600
 
 AUTH_LOG = "/var/log/auth.log"
 auth_queue = queue.Queue()
@@ -29,7 +29,7 @@ def auth_watcher(logfile, q):
     # Seek to end for tail -F behavior
     f.seek(0, os.SEEK_END)
 
-    auth_regex = re.compile(r"pam_unix", re.IGNORECASE)
+    auth_regex = re.compile(r"pam_unix.*", re.IGNORECASE)
 
     while not STOP:
         line = f.readline()
@@ -61,7 +61,7 @@ def auth_watcher(logfile, q):
 # -----------------------------------------------------------------
 # Thread 2: Consume auths from queue
 # -----------------------------------------------------------------
-def auth_to_te_worker(q, staging):
+def auth_to_te_worker(q, NoneType):
     """Take parsed auths from the queue and run audit2allow."""
     print("[Processor] Starting auth processor...")
 
@@ -94,7 +94,7 @@ def main():
 
     processor_thread = threading.Thread(
         target=auth_to_te_worker,
-        args=(auth_queue, AUTH_LOG),
+        args=(auth_queue, None),
         daemon=True
     )
 
@@ -104,10 +104,8 @@ def main():
     print("[Main] Running. Press Ctrl+C to stop.")
 
     try:
-        while True:
+        while STOP is not True:
             time.sleep(1)
-            if STOP == True:
-                break
     except KeyboardInterrupt:
         print("\n[Main] Shutdown requested...")
         STOP = True
